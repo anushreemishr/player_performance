@@ -600,8 +600,8 @@ const PLOTLY_THEME = {
     plot_bgcolor: 'rgba(0,0,0,0)',
     font: { family: 'Inter, sans-serif', color: '#94a3b8', size: 12 },
     margin: { l: 50, r: 20, t: 10, b: 40 },
-    xaxis: { gridcolor: '#1a2744', zerolinecolor: '#1a2744' },
-    yaxis: { gridcolor: '#1a2744', zerolinecolor: '#1a2744' },
+    get xaxis() { return { gridcolor: '#1a2744', zerolinecolor: '#1a2744' }; },
+    get yaxis() { return { gridcolor: '#1a2744', zerolinecolor: '#1a2744' }; },
     colorway: ['#00d4ff', '#7c3aed', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#8b5cf6'],
     hoverlabel: { bgcolor: '#1e293b', bordercolor: '#334155', font: { color: '#e2e8f0', family: 'Inter', size: 13 } }
 };
@@ -654,7 +654,7 @@ async function fetchRatingHistory(username) {
 
 async function fetchGames(username, max) {
     const res = await fetch(
-        `${LICHESS}/api/games/user/${encodeURIComponent(username)}?max=${max}&rated=true&opening=true&moves=false&tags=false&clocks=false&evals=false&perfType=ultraBullet,bullet,blitz,rapid,classical,correspondence`,
+        `${LICHESS}/api/games/user/${encodeURIComponent(username)}?max=${max}&rated=true&opening=true&moves=true&tags=false&clocks=false&evals=false&perfType=ultraBullet,bullet,blitz,rapid,classical,correspondence`,
         { headers: { 'Accept': 'application/x-ndjson' } }
     );
     if (!res.ok) throw new Error(`Could not fetch games (${res.status}).`);
@@ -697,6 +697,7 @@ async function analyzePlayer() {
         setLoadingStatus('Done!', 100);
         await new Promise(r => setTimeout(r, 200));
         showScreen('dashboard');
+        requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
         document.title = `Chess Analytics | ${profile.username}`;
     } catch (err) {
         document.getElementById('error-title').textContent = 'Analysis Failed';
@@ -757,8 +758,9 @@ function processGames(games, usernameId) {
         timeControls[speed][result]++;
         timeControls[speed].total++;
 
-        // Game length
-        if (game.turns) gameLengths.push(Math.ceil(game.turns / 2));
+        // Lichess exports moves as SAN text; turns is not included in every response.
+        const plyCount = game.turns || game.moves?.trim().split(/\s+/).length;
+        if (plyCount) gameLengths.push(Math.ceil(plyCount / 2));
 
         // Day of week
         const date = new Date(game.createdAt);
